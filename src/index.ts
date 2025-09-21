@@ -1,126 +1,125 @@
-import { PluginOptions, TransformResult } from './types';
-import { Plugin } from "vite";
-
-import path from 'path';
-import fs from 'fs';
-import { globSync } from 'glob';
+import fs from "node:fs";
+import path from "node:path";
+import c from "ansi-colors";
+import { globSync } from "glob";
 import { minimatch } from "minimatch";
-import c from 'ansi-colors';
+import type { Plugin } from "vite";
+import type { PluginOptions, TransformResult } from "./types";
 
-export default function sassGlobImports(options: PluginOptions = {}): Plugin {
-  // Regular expressions to match against
-  const FILE_REGEX = /\.s[c|a]ss(\?direct)?$/;
-  const IMPORT_REGEX = /^([ \t]*(?:\/\*.*)?)@(import|use)\s+["']([^"']+\*[^"']*(?:\.scss|\.sass)?)["'];?([ \t]*(?:\/[/*].*)?)$/gm;
+let IMPORT_REGEX: RegExp;
+let options: PluginOptions;
+export default function sassGlobImports(_options: PluginOptions = {}): Plugin {
+	IMPORT_REGEX =
+		/^([ \t]*(?:\/\*.*)?)@(import|use)\s+["']([^"']+\*[^"']*(?:\.scss|\.sass)?)["'];?([ \t]*(?:\/[/*].*)?)$/gm;
+	options = _options;
+	return {
+		name: "sass-glob-import",
+		enforce: "pre",
+		filter: {
+			id: /\.s[c|a]ss(\?direct)?$/,
+		},
+		transform(src: string, id: string): TransformResult {
+			const fileName = path.basename(id);
+			const filePath = path.dirname(id);
+			return {
+				code: transform(src, fileName, filePath),
+				map: null, // provide source map if available
+			};
+		},
+	};
+}
 
-  // Path to the directory of the file being processed
-  let filePath = '';
+function isSassOrScss(filename: string) {
+	return (
+		!fs.statSync(filename).isDirectory() &&
+		path.extname(filename).match(/\.sass|\.scss/i)
+	);
+}
 
-  // Name of the file being processed
-  let fileName = '';
+function transform(src: string, fileName: string, filePath: string): string {
+	// Determine if this is Sass (vs SCSS) based on file extension
+	const isSass = path.extname(fileName).match(/\.sass/i);
 
-  function isSassOrScss(filename: string) {
-    return (!fs.statSync(filename).isDirectory() && path.extname(filename).match(/\.sass|\.scss/i));
-  }
+	// Store base locations
+	const searchBases = [filePath];
+	const ignorePaths = options.ignorePaths || [];
+	const contentLinesCount = src.split("\n").length;
 
-  const transform = (src: string): string => {
-    // Determine if this is Sass (vs SCSS) based on file extension
-    const isSass = path.extname(fileName).match(/\.sass/i);
+	for (let i = 0; i < contentLinesCount; i++) {
+		const result = [...src.matchAll(IMPORT_REGEX)];
+		if (result.length === 0) continue;
 
-    // Store base locations
-    const searchBases = [filePath];
+		const [importRule, startComment, importType, globPattern, endComment] =
+			result[0];
 
-    // Ignore paths
-    const ignorePaths = options.ignorePaths || [];
+		let files: string[] = [];
+		let basePath = "";
+		for (let i = 0; i < searchBases.length; i++) {
+			basePath = searchBases[i];
 
-    // Get each line of src
-    let contentLinesCount = src.split('\n').length;
+			files = globSync(path.join(basePath, globPattern), {
+				cwd: "./",
+				windowsPathsNoEscape: true,
+			}).sort((a, b) => a.localeCompare(b, "en"));
 
-    let result;
+			// Do directories exist matching the glob pattern?
+			const globPatternWithoutWildcard = globPattern.split("*")[0];
+			if (globPatternWithoutWildcard.length) {
+				const directoryExists = fs.existsSync(
+					path.join(basePath, globPatternWithoutWildcard),
+				);
+				if (!directoryExists) {
+					console.warn(
+						c.yellow(
+							`Sass Glob Import: Directories don't exist for the glob pattern "${globPattern}"`,
+						),
+					);
+				}
+			}
 
-    // Loop through each line
-    for (let i = 0; i < contentLinesCount; i++) {
-      // Find any glob import patterns on the line
-      result = [...src.matchAll(IMPORT_REGEX)];
+			if (files.length > 0) {
+				break;
+			}
+		}
 
-      if (result.length) {
-        const [importRule, startComment, importType, globPattern, endComment] = result[0];
+		const isGlobTrailStatic = !globPattern.split("/").at(-1)?.includes("*");
+		const imports = [];
+		files.forEach((anyFilename: string, index: number) => {
+			if (!isSassOrScss(anyFilename)) {
+				return;
+			}
 
-        let files: string[] = [];
-        let basePath = '';
-        for (let i = 0; i < searchBases.length; i++) {
-          basePath = searchBases[i];
+			const scssFilename = path
+				// Remove parent base path
+				.relative(basePath, anyFilename)
+				.replace(/\\/g, "/")
+				// Remove leading slash
+				.replace(/^\//, "");
+			if (
+				!ignorePaths.some((ignorePath: string) => {
+					return minimatch(scssFilename, ignorePath);
+				})
+			) {
+				const file = isGlobTrailStatic
+					? `"${scssFilename}" as ${path.parse(scssFilename).name}_${index}`
+					: `"${scssFilename}"`;
+				imports.push(`@${importType} ${file}${isSass ? "" : ";"}`);
+			}
+		});
 
-          files = globSync(path.join(basePath, globPattern), {
-            cwd: './',
-            windowsPathsNoEscape: true,
-          }).sort((a, b) => a.localeCompare(b, 'en'));
+		if (startComment) {
+			imports.unshift(startComment);
+		}
 
-          // Do directories exist matching the glob pattern?
-          const globPatternWithoutWildcard = globPattern.split('*')[0];
-          if (globPatternWithoutWildcard.length) {
-            const directoryExists = fs.existsSync(path.join(basePath, globPatternWithoutWildcard));
-            if (!directoryExists) {
-              console.warn(c.yellow(`Sass Glob Import: Directories don't exist for the glob pattern "${globPattern}"`));
-            }
-          }
+		if (endComment) {
+			imports.push(endComment);
+		}
 
-          if (files.length > 0) {
-            break;
-          }
-        }
+		const replaceString = imports.join("\n");
+		// biome-ignore lint: easier for now
+		src = src.replace(importRule, replaceString);
+	}
 
-        let imports = [];
-
-        files.forEach((filename: string) => {
-          if (isSassOrScss(filename)) {
-            // Remove parent base path
-            filename = path.relative(basePath, filename).replace(/\\/g, '/');
-            // Remove leading slash
-            filename = filename.replace(/^\//, '');
-            if (!ignorePaths.some((ignorePath: string) => {
-              return minimatch(filename, ignorePath);
-            })) {
-              // remove parent base path
-              imports.push(`@${importType} "` + filename + '"' + (isSass ? '' : ';'));
-            }
-          }
-        });
-
-        if (startComment) {
-          imports.unshift(startComment);
-        }
-
-        if (endComment) {
-          imports.push(endComment);
-        }
-
-        const replaceString = imports.join('\n');
-        src = src.replace(importRule, replaceString);
-      }
-    }
-
-    // Return the transformed source
-    return src;
-  };
-
-  return {
-    name: 'sass-glob-import',
-    enforce: 'pre',
-
-    transform(src: string, id: string): TransformResult {
-      let result: TransformResult = {
-        code: src,
-        map: null, // provide source map if available
-      }
-
-      if (FILE_REGEX.test(id)) {
-        fileName = path.basename(id);
-        filePath = path.dirname(id);
-
-        result.code = transform(src);
-      }
-
-      return result;
-    },
-  };
+	// Return the transformed source
+	return src;
 }

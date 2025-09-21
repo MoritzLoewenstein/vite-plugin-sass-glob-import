@@ -1,8 +1,8 @@
 export interface PluginOptions {
-  ignorePaths?: string[],
+	ignorePaths?: string[];
 }
 
 export interface TransformResult {
-  code: string,
-  map: null,
+	code: string;
+	map: null;
 }
