@@ -2,7 +2,7 @@
 
 Fork of [vite-plugin-sass-glob-import](https://github.com/cmalven/vite-plugin-sass-glob-import) which implements some stuff:
 
-- Use namespaces (`"@use "foo/a/bar.scss" as bar_1;"`) to glob import multiple files with the same name (`@use "./foo/*/bar.scss";`)
+- Use namespaces (`@use "foo/a/bar.scss" as bar_1;`) to glob import multiple files with the same name (`@use "./foo/*/bar.scss";`)
 - TODO: vite-rolldown hook filters: https://rolldown.rs/plugins/hook-filters
 
 # vite-plugin-sass-glob-import
