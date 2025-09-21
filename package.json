@@ -1,6 +1,6 @@
 {
 	"name": "@moritzloewenstein/vite-plugin-sass-glob-import",
-	"version": "5.0.0",
+	"version": "5.0.1",
 	"description": "Use glob syntax for imports in your main Sass or SCSS file.",
 	"main": "./dist/index.mjs",
 	"types": "./dist/index.d.mts",
