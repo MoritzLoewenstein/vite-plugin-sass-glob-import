@@ -4,6 +4,9 @@
 	"description": "Use glob syntax for imports in your main Sass or SCSS file.",
 	"main": "./dist/index.mjs",
 	"types": "./dist/index.d.mts",
+	"files": [
+		"dist"
+	],
 	"scripts": {
 		"dev": "vitest",
 		"build": "tsup src/index.ts --format esm --dts",
