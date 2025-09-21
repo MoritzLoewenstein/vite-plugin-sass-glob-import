@@ -15,9 +15,6 @@ export default function sassGlobImports(_options: PluginOptions = {}): Plugin {
 	return {
 		name: "sass-glob-import",
 		enforce: "pre",
-		filter: {
-			id: /\.s[c|a]ss(\?direct)?$/,
-		},
 		transform(src: string, id: string): TransformResult {
 			const fileName = path.basename(id);
 			const filePath = path.dirname(id);
