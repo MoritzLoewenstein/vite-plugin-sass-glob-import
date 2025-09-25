@@ -12,7 +12,7 @@ Fork of [vite-plugin-sass-glob-import](https://github.com/cmalven/vite-plugin-sa
 ## Install
 
 ```shell
-npm i -D vite-plugin-sass-glob-import
+npm i -D @moritzloewenstein/vite-plugin-sass-glob-import
 ```
 
 ```js
