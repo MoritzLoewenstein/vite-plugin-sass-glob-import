@@ -19,7 +19,7 @@ npm i -D @moritzloewenstein/vite-plugin-sass-glob-import
 // In vite.config.js
 
 import { defineConfig } from "vite";
-import sassGlobImports from "vite-plugin-sass-glob-import";
+import sassGlobImports from "@moritzloewenstein/vite-plugin-sass-glob-import";
 
 export default defineConfig({
   plugins: [sassGlobImports()],
