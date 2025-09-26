@@ -3,27 +3,89 @@ import path from "node:path";
 import c from "ansi-colors";
 import { globSync } from "glob";
 import { minimatch } from "minimatch";
-import type { Plugin } from "vite";
+import {
+	type ModuleNode,
+	normalizePath,
+	type Plugin,
+	type ViteDevServer,
+} from "vite";
 import type { PluginOptions, TransformResult } from "./types";
 
 let IMPORT_REGEX: RegExp;
 let options: PluginOptions;
+let globToModuleIds: Map<string, Set<string>>;
+let projectRoot: string;
+let server: ViteDevServer;
 export default function sassGlobImports(_options: PluginOptions = {}): Plugin {
 	IMPORT_REGEX =
 		/^([ \t]*(?:\/\*.*)?)@(import|use)\s+["']([^"']+\*[^"']*(?:\.scss|\.sass)?)["'];?([ \t]*(?:\/[/*].*)?)$/gm;
 	options = _options;
+	globToModuleIds = new Map();
 	return {
 		name: "sass-glob-import",
 		enforce: "pre",
+		configResolved(config) {
+			projectRoot = normalizePath(config.root);
+			if (options.autoInvalidation && !config.server.watch) {
+				config.logger.warn(
+					"vite-plugin-sass-glob-import: set server.watch: true for automatic glob module invalidation",
+				);
+			}
+		},
+		configureServer(_server) {
+			if (!options.autoInvalidation) {
+				return;
+			}
+			server = _server;
+			server.watcher.on("all", async (_event, pathName) => {
+				if (!path.extname(pathName).match(/\.sass|\.scss/i)) {
+					return;
+				}
+
+				const relPathName = path.relative(projectRoot, pathName);
+				const modsToInvalidate = new Set<string>();
+				for (const [glob, modSet] of globToModuleIds) {
+					if (minimatch(relPathName, glob)) {
+						for (const mod of modSet) {
+							modsToInvalidate.add(mod);
+						}
+					}
+				}
+
+				const modsByFile = new Set<ModuleNode>();
+				for (const mod of modsToInvalidate) {
+					const modules = server.moduleGraph.getModulesByFile(mod);
+					if (!modules) continue;
+					for (const m of modules) {
+						modsByFile.add(m);
+					}
+				}
+
+				invalidateModules(server, modsByFile, Date.now());
+				await Promise.all(
+					Array.from(modsByFile).map((mod) => server.reloadModule(mod)),
+				);
+			});
+		},
 		transform(src: string, id: string): TransformResult {
-			const fileName = path.basename(id);
-			const filePath = path.dirname(id);
 			return {
-				code: transform(src, fileName, filePath),
+				code: transform(src, id),
 				map: null, // provide source map if available
 			};
 		},
 	};
+}
+
+function invalidateModules(
+	server: ViteDevServer,
+	modules: Set<ModuleNode>,
+	timestamp: number,
+): Set<ModuleNode> {
+	const seen = new Set<ModuleNode>();
+	for (const mod of modules) {
+		server.moduleGraph.invalidateModule(mod, seen, timestamp, true);
+	}
+	return modules;
 }
 
 function isSassOrScss(filename: string) {
@@ -33,7 +95,9 @@ function isSassOrScss(filename: string) {
 	);
 }
 
-function transform(src: string, fileName: string, filePath: string): string {
+function transform(src: string, id: string): string {
+	const fileName = path.basename(id);
+	const filePath = path.dirname(id);
 	// Determine if this is Sass (vs SCSS) based on file extension
 	const isSass = path.extname(fileName).match(/\.sass/i);
 
@@ -48,6 +112,23 @@ function transform(src: string, fileName: string, filePath: string): string {
 
 		const [importRule, startComment, importType, globPattern, endComment] =
 			result[0];
+
+		if (options.autoInvalidation) {
+			const projectGlob = path.relative(
+				projectRoot,
+				path.resolve(path.join(filePath, globPattern)),
+			);
+			const hasGlob = globToModuleIds.has(projectGlob);
+			if (!globToModuleIds.get(projectGlob)?.has(id)) {
+				const modSet = globToModuleIds.get(projectGlob) ?? new Set();
+				modSet.add(id);
+				globToModuleIds.set(projectGlob, modSet);
+				if (!hasGlob) {
+					const globDir = projectGlob.split("*")[0];
+					server.watcher.add(globDir);
+				}
+			}
+		}
 
 		let files: string[] = [];
 		let basePath = "";
