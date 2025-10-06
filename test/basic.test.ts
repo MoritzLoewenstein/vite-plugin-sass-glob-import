@@ -9,6 +9,7 @@ body {}
 describe("it correctly converts glob patterns to inline imports", () => {
 	// biome-ignore lint: TODO
 	const plugin: any = sassGlobImportPlugin();
+	plugin.configResolved({ root: process.cwd() });
 
 	it("for SCSS", () => {
 		const expected = `
@@ -48,6 +49,7 @@ body {}
 describe("it warns for invalid glob paths", () => {
 	// biome-ignore lint: TODO
 	const plugin: any = sassGlobImportPlugin();
+	plugin.configResolved({ root: process.cwd() });
 
 	it("for SCSS", () => {
 		const source = `
@@ -68,6 +70,7 @@ body {}
 describe("it correctly converts glob patterns with static trail to namespace imports", () => {
 	// biome-ignore lint: TODO
 	const plugin: any = sassGlobImportPlugin();
+	plugin.configResolved({ root: process.cwd() });
 
 	it.todo("for SCSS", () => {
 		//TODO does this even work?
