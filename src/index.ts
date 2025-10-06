@@ -114,7 +114,7 @@ function transform(src: string, id: string): string {
 		const [importRule, startComment, importType, globPattern, endComment] =
 			result[0];
 
-		if (options.autoInvalidation) {
+		if (options.autoInvalidation && server?.watcher) {
 			const projectGlob = path.relative(
 				projectRoot,
 				path.resolve(path.join(filePath, globPattern)),
