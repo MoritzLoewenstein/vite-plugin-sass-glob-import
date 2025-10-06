@@ -174,9 +174,10 @@ function transform(src: string, id: string): string {
 				.replace(/\\/g, "/")
 				// Remove leading slash
 				.replace(/^\//, "");
+			const rootRelFilename = path.relative(projectRoot, anyFilename);
 			if (
 				!ignorePaths.some((ignorePath: string) => {
-					return minimatch(scssFilename, ignorePath);
+					return minimatch(rootRelFilename, ignorePath);
 				})
 			) {
 				const file = isGlobTrailStatic
