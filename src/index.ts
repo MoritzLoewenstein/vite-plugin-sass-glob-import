@@ -30,6 +30,7 @@ export default function sassGlobImports(_options: PluginOptions = {}): Plugin {
 				config.logger.warn(
 					"vite-plugin-sass-glob-import: set server.watch: true for automatic glob module invalidation",
 				);
+				options.autoInvalidation = false;
 			}
 		},
 		configureServer(_server) {
