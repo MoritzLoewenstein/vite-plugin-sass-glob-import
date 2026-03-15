@@ -1,5 +1,6 @@
 {
 	"name": "@moritzloewenstein/vite-plugin-sass-glob-import",
+	"type": "module",
 	"version": "6.0.4",
 	"description": "Use glob syntax for imports in your main Sass or SCSS file.",
 	"main": "./dist/index.mjs",
@@ -8,8 +9,9 @@
 		"dist"
 	],
 	"scripts": {
-		"dev": "vitest",
-		"build": "tsup src/index.ts --format esm --dts",
+		"build": "tsdown",
+		"dev": "tsdown --watch",
+		"typecheck": "tsc --noEmit",
 		"test": "vitest run",
 		"biome:check": "biome check .",
 		"biome:write": "biome check . --write",
@@ -42,7 +44,7 @@
 		"@biomejs/biome": "^2.4.7",
 		"@types/glob": "^8.1.0",
 		"@types/node": "^22.19.15",
-		"tsup": "^8.5.1",
+		"tsdown": "^0.21.2",
 		"typescript": "^5.9.3",
 		"vite": "^7.3.1",
 		"vitest": "^4.1.0"

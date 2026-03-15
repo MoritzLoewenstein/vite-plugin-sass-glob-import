@@ -9,7 +9,7 @@ import {
 	type Plugin,
 	type ViteDevServer,
 } from "vite";
-import type { PluginOptions, TransformResult } from "./types";
+import type { PluginOptions, TransformResult } from "./types.ts";
 
 let IMPORT_REGEX: RegExp;
 let options: PluginOptions;
@@ -18,7 +18,7 @@ let projectRoot: string;
 let server: ViteDevServer;
 export default function sassGlobImports(_options: PluginOptions = {}): Plugin {
 	IMPORT_REGEX =
-		/^([ \t]*(?:\/\*.*)?)@(import|use)\s+["']([^"']+\*[^"']*(?:\.scss|\.sass)?)["'];?([ \t]*(?:\/[/*].*)?)$/gm;
+		/^([ \t]*(?:\/\*.*)?)@(import|use)\s+["']([^"']+\*[^"']*(?:\.scss|\.sass)?)["'];?([ \t]*(?:\/[/*].*)?)$/m;
 	options = _options;
 	globToModuleIds = new Map();
 	return {
@@ -108,11 +108,17 @@ function transform(src: string, id: string): string {
 	const contentLinesCount = src.split("\n").length;
 
 	for (let i = 0; i < contentLinesCount; i++) {
-		const result = [...src.matchAll(IMPORT_REGEX)];
-		if (result.length === 0) continue;
+		const result = src.match(IMPORT_REGEX);
+		if (!result) {
+			continue;
+		}
 
 		const [importRule, startComment, importType, globPattern, endComment] =
-			result[0];
+			result;
+
+		if (!globPattern) {
+			continue;
+		}
 
 		if (options.autoInvalidation && server?.watcher) {
 			const projectGlob = path.relative(
@@ -126,26 +132,27 @@ function transform(src: string, id: string): string {
 				globToModuleIds.set(projectGlob, modSet);
 				if (!hasGlob) {
 					const globDir = projectGlob.split("*")[0];
-					server.watcher.add(globDir);
+					if (globDir) {
+						server.watcher.add(globDir);
+					}
 				}
 			}
 		}
 
 		let files: string[] = [];
 		let basePath = "";
-		for (let i = 0; i < searchBases.length; i++) {
-			basePath = searchBases[i];
-
-			files = globSync(path.join(basePath, globPattern), {
+		for (const searchBase of searchBases) {
+			basePath = searchBase;
+			files = globSync(path.join(searchBase, globPattern), {
 				cwd: "./",
 				windowsPathsNoEscape: true,
 			}).sort((a, b) => a.localeCompare(b, "en"));
 
 			// Do directories exist matching the glob pattern?
 			const globPatternWithoutWildcard = globPattern.split("*")[0];
-			if (globPatternWithoutWildcard.length) {
+			if (globPatternWithoutWildcard) {
 				const directoryExists = fs.existsSync(
-					path.join(basePath, globPatternWithoutWildcard),
+					path.join(searchBase, globPatternWithoutWildcard),
 				);
 				if (!directoryExists) {
 					console.warn(

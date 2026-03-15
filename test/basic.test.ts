@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import sassGlobImportPlugin from "../src";
+import sassGlobImportPlugin from "../src/index.js";
 
 const source = `
 body {}
