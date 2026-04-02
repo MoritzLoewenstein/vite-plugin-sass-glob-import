@@ -1,37 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import sassGlobImportPlugin from "../src/index.js";
 
-const source = `
-body {}
-@import "files/*.scss";
-`;
-
-describe("it correctly converts glob patterns to inline imports", () => {
+describe("it correctly converts glob patterns to inline @use", () => {
 	// biome-ignore lint: TODO
 	const plugin: any = sassGlobImportPlugin();
 	plugin.configResolved({ root: process.cwd() });
 
 	it("for SCSS", () => {
-		const expected = `
-body {}
-@import "files/_file-a.scss";
-@import "files/_file-b.scss";
-`;
-		const path = `${__dirname}/virtual-file.scss`;
-		expect(plugin.transform(source, path)?.code).toEqual(expected);
-	});
-
-	it("for Sass", () => {
-		const expected = `
-body {}
-@import "files/_file-a.scss"
-@import "files/_file-b.scss"
-`;
-		const path = `${__dirname}/virtual-file.sass`;
-		expect(plugin.transform(source, path)?.code).toEqual(expected);
-	});
-
-	it("with @use", () => {
 		const source = `
 body {}
 @use "files/*.scss";
@@ -40,6 +15,33 @@ body {}
 body {}
 @use "files/_file-a.scss";
 @use "files/_file-b.scss";
+`;
+		const path = `${__dirname}/virtual-file.scss`;
+		expect(plugin.transform(source, path)?.code).toEqual(expected);
+	});
+
+	it("for Sass", () => {
+		const source = `
+body {}
+@use "files/*.scss";
+`;
+		const expected = `
+body {}
+@use "files/_file-a.scss"
+@use "files/_file-b.scss"
+`;
+		const path = `${__dirname}/virtual-file.sass`;
+		expect(plugin.transform(source, path)?.code).toEqual(expected);
+	});
+
+	it("ignores @import (deprecated)", () => {
+		const source = `
+body {}
+@import "files/*.scss";
+`;
+		const expected = `
+body {}
+@import "files/*.scss";
 `;
 		const path = `${__dirname}/virtual-file.scss`;
 		expect(plugin.transform(source, path)?.code).toEqual(expected);
@@ -71,28 +73,6 @@ describe("it correctly converts glob patterns with static trail to namespace imp
 	// biome-ignore lint: TODO
 	const plugin: any = sassGlobImportPlugin();
 	plugin.configResolved({ root: process.cwd() });
-
-	it.todo("for SCSS", () => {
-		//TODO does this even work?
-		const expected = `
-body {}
-@import "files/a/foo.scss";
-@import "files/b/foo.scss";
-`;
-		const path = `${__dirname}/virtual-file.scss`;
-		expect(plugin.transform(source, path)?.code).toEqual(expected);
-	});
-
-	it.todo("for Sass", () => {
-		//TODO does this even work?
-		const expected = `
-body {}
-@import "files/a/foo.scss"
-@import "files/b/foo.scss"
-`;
-		const path = `${__dirname}/virtual-file.sass`;
-		expect(plugin.transform(source, path)?.code).toEqual(expected);
-	});
 
 	it("with @use", () => {
 		const source = `

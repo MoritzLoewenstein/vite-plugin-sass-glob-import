@@ -3,11 +3,12 @@
 Fork of [vite-plugin-sass-glob-import](https://github.com/cmalven/vite-plugin-sass-glob-import) which implements some stuff:
 
 - Use namespaces (`@use "foo/a/bar.scss" as bar_1;`) to glob import multiple files with the same name (`@use "./foo/*/bar.scss";`)
-- TODO: vite-rolldown hook filters: https://rolldown.rs/plugins/hook-filters
+- Removed `@import` support
+- Vite watcher support
 
 # vite-plugin-sass-glob-import
 
-> Use glob syntax for @import or @use in your main Sass or SCSS file.
+> Use glob syntax for @use in your main Sass or SCSS file.
 
 ## Install
 
@@ -34,8 +35,8 @@ export default defineConfig({
 // In src/styles/main.scss
 
 @use "vars/**/*.scss";
-@import "utils/**/*.scss";
-@import "objects/**/*.scss";
+@use "utils/**/*.scss";
+@use "objects/**/*.scss";
 ```
 
 The above will be transformed into something like the following before Vite processes it with Sass:
@@ -43,11 +44,11 @@ The above will be transformed into something like the following before Vite proc
 ```scss
 @use "vars/var-a.scss";
 @use "vars/var-b.scss";
-@import "utils/utils-a.scss";
-@import "utils/utils-b.scss";
-@import "objects/objects-a.scss";
-@import "objects/objects-b.scss";
-@import "objects/objects-c.scss";
+@use "utils/utils-a.scss";
+@use "utils/utils-b.scss";
+@use "objects/objects-a.scss";
+@use "objects/objects-b.scss";
+@use "objects/objects-c.scss";
 ```
 
 ## Caveats

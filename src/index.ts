@@ -18,7 +18,7 @@ let projectRoot: string;
 let server: ViteDevServer;
 export default function sassGlobImports(_options: PluginOptions = {}): Plugin {
 	IMPORT_REGEX =
-		/^([ \t]*(?:\/\*.*)?)@(import|use)\s+["']([^"']+\*[^"']*(?:\.scss|\.sass)?)["'];?([ \t]*(?:\/[/*].*)?)$/m;
+		/^([ \t]*(?:\/\*.*)?)@(use)\s+["']([^"']+\*[^"']*(?:\.scss|\.sass)?)["'];?([ \t]*(?:\/[/*].*)?)$/m;
 	options = _options;
 	globToModuleIds = new Map();
 	return {
