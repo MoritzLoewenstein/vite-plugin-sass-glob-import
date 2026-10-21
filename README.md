@@ -1,7 +1,6 @@
 ## Note
 
 Fork of [vite-plugin-sass-glob-import](https://github.com/cmalven/vite-plugin-sass-glob-import) which implements some stuff:
-
 - Use namespaces (`@use "foo/a/bar.scss" as bar_1;`) to glob import multiple files with the same name (`@use "./foo/*/bar.scss";`)
 - Removed `@import` support
 - Vite watcher support
@@ -23,7 +22,7 @@ import { defineConfig } from "vite";
 import sassGlobImports from "@moritzloewenstein/vite-plugin-sass-glob-import";
 
 export default defineConfig({
-  plugins: [sassGlobImports()],
+	plugins: [sassGlobImports()],
 });
 ```
 
