@@ -1,10 +1,25 @@
 import { describe, expect, it, vi } from "vitest";
 import sassGlobImportPlugin from "../src/index.js";
 
+function runTransform(
+	plugin: ReturnType<typeof sassGlobImportPlugin>,
+	source: string,
+	id: string,
+) {
+	const transform = plugin.transform;
+	if (!transform || typeof transform === "function") {
+		throw new Error("Expected an object transform hook");
+	}
+	const handler = transform.handler as (
+		this: unknown,
+		code: string,
+		id: string,
+	) => { code: string; map: null } | null;
+	return handler.call(undefined, source, id)?.code ?? null;
+}
+
 describe("it correctly converts glob patterns to inline @use", () => {
-	// biome-ignore lint: TODO
-	const plugin: any = sassGlobImportPlugin();
-	plugin.configResolved({ root: process.cwd() });
+	const plugin = sassGlobImportPlugin();
 
 	it("for SCSS", () => {
 		const source = `
@@ -17,7 +32,7 @@ body {}
 @use "files/_file-b.scss";
 `;
 		const path = `${__dirname}/virtual-file.scss`;
-		expect(plugin.transform(source, path)?.code).toEqual(expected);
+		expect(runTransform(plugin, source, path)).toEqual(expected);
 	});
 
 	it("for Sass", () => {
@@ -31,7 +46,7 @@ body {}
 @use "files/_file-b.scss"
 `;
 		const path = `${__dirname}/virtual-file.sass`;
-		expect(plugin.transform(source, path)?.code).toEqual(expected);
+		expect(runTransform(plugin, source, path)).toEqual(expected);
 	});
 
 	it("ignores @import (deprecated)", () => {
@@ -39,19 +54,34 @@ body {}
 body {}
 @import "files/*.scss";
 `;
+		const path = `${__dirname}/virtual-file.scss`;
+		expect(runTransform(plugin, source, path)).toBeNull();
+	});
+
+	it("skips non-Sass modules", () => {
+		const source = '@use "files/*.scss";';
+		const path = `${__dirname}/virtual-file.js`;
+		expect(runTransform(plugin, source, path)).toBeNull();
+	});
+
+	it("converts multiple glob directives", () => {
+		const source = `
+@use "files/*.scss";
+@use 'files/*.scss';
+`;
 		const expected = `
-body {}
-@import "files/*.scss";
+@use "files/_file-a.scss";
+@use "files/_file-b.scss";
+@use "files/_file-a.scss";
+@use "files/_file-b.scss";
 `;
 		const path = `${__dirname}/virtual-file.scss`;
-		expect(plugin.transform(source, path)?.code).toEqual(expected);
+		expect(runTransform(plugin, source, path)).toEqual(expected);
 	});
 });
 
 describe("it warns for invalid glob paths", () => {
-	// biome-ignore lint: TODO
-	const plugin: any = sassGlobImportPlugin();
-	plugin.configResolved({ root: process.cwd() });
+	const plugin = sassGlobImportPlugin();
 
 	it("for SCSS", () => {
 		const source = `
@@ -64,15 +94,13 @@ body {}
 `;
 		const path = `${__dirname}/virtual-file.scss`;
 		vi.spyOn(console, "warn");
-		expect(plugin.transform(source, path)?.code).toEqual(expected);
+		expect(runTransform(plugin, source, path)).toEqual(expected);
 		expect(console.warn).toHaveBeenCalledTimes(1);
 	});
 });
 
 describe("it correctly converts glob patterns with static trail to namespace imports", () => {
-	// biome-ignore lint: TODO
-	const plugin: any = sassGlobImportPlugin();
-	plugin.configResolved({ root: process.cwd() });
+	const plugin = sassGlobImportPlugin();
 
 	it("with @use", () => {
 		const source = `
@@ -85,6 +113,6 @@ body {}
 @use "files/b/foo.scss" as foo_1;
 `;
 		const path = `${__dirname}/virtual-file.scss`;
-		expect(plugin.transform(source, path)?.code).toEqual(expected);
+		expect(runTransform(plugin, source, path)).toEqual(expected);
 	});
 });

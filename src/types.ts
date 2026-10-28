@@ -10,8 +10,3 @@ export interface PluginOptions {
 	 */
 	autoInvalidation?: boolean;
 }
-
-export interface TransformResult {
-	code: string;
-	map: null;
-}
